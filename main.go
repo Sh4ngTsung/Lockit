@@ -9,32 +9,17 @@ import (
 	"flag"
 	"fmt"
 	"io"
-<<<<<<< HEAD
-=======
 	"log"
->>>>>>> 2b4498a (Update random nonce)
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
-<<<<<<< HEAD
-=======
 
->>>>>>> 2b4498a (Update random nonce)
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/term"
 )
 
 type Config struct {
-<<<<<<< HEAD
-	Encrypt       bool
-	Decrypt       bool
-	Directory     string
-	Threads       int
-	SingleFile    string
-	UseMultithread bool
-	Passes        int
-=======
 	Encrypt        bool
 	Decrypt        bool
 	Directory      string
@@ -43,20 +28,10 @@ type Config struct {
 	UseMultithread bool
 	Passes         int
 	Cat            bool
->>>>>>> 2b4498a (Update random nonce)
 }
 
 func main() {
 	config := parseFlags()
-<<<<<<< HEAD
-	var key []byte
-	if config.Encrypt {
-		key = getKeyFromUserForEncryption()
-	} else if config.Decrypt {
-		key = getKeyFromUserForDecryption()
-	} else {
-		fmt.Println("No valid operation specified. Use -h for help.")
-=======
 
 	var key []byte
 	var salt []byte
@@ -77,20 +52,10 @@ func main() {
 		defer zeroize(key)
 	} else {
 		log.Println("No valid operation specified. Use -h for help.")
->>>>>>> 2b4498a (Update random nonce)
 		os.Exit(1)
 	}
 
 	if config.SingleFile != "" {
-<<<<<<< HEAD
-		if err := processSingleFile(config.SingleFile, key, config.Encrypt, config.Decrypt, config.Passes); err != nil {
-			fmt.Printf("Error processing file: %v\n", err)
-		}
-	} else if config.Directory != "" {
-		processDirectory(config.Directory, key, config.Encrypt, config.Decrypt, config.UseMultithread, config.Threads, config.Passes)
-	} else {
-		fmt.Println("No valid input provided. Use -h for help.")
-=======
 		if config.UseMultithread {
 			var wg sync.WaitGroup
 			errChan := make(chan error, 1)
@@ -115,7 +80,6 @@ func main() {
 		processDirectory(config.Directory, key, salt, config.Encrypt, config.Decrypt, config.UseMultithread, config.Threads, config.Passes, config.Cat)
 	} else {
 		log.Println("No valid input provided. Use -h for help.")
->>>>>>> 2b4498a (Update random nonce)
 		os.Exit(1)
 	}
 }
@@ -125,42 +89,20 @@ func parseFlags() Config {
 	decrypt := flag.Bool("d", false, "Decrypt files")
 	directory := flag.String("r", "", "Directory to process")
 	singleFile := flag.String("f", "", "Single file to process")
-<<<<<<< HEAD
-	threads := flag.Int("t", 30, "Number of threads for multithreading")
-	passes := flag.Int("p", 0, "Number of overwrite passes for secure deletion (0 for normal deletion)")
-=======
 	threads := flag.Int("t", 3, "Number of threads for multithreading")
 	passes := flag.Int("p", 0, "Number of passes for secure overwrite (0 for normal removal)")
 	cat := flag.Bool("c", false, "Display decrypted content in terminal (does not alter original file)")
->>>>>>> 2b4498a (Update random nonce)
 
 	flag.Parse()
 
 	if *encrypt && *decrypt {
-<<<<<<< HEAD
-		fmt.Println("Cannot use -e and -d together. Exiting.")
-=======
 		log.Println("Cannot use -e and -d together. Exiting.")
->>>>>>> 2b4498a (Update random nonce)
 		os.Exit(1)
 	}
 
 	useMultithread := *threads > 1
 
 	return Config{
-<<<<<<< HEAD
-		Encrypt:       *encrypt,
-		Decrypt:       *decrypt,
-		Directory:     *directory,
-		Threads:       *threads,
-		SingleFile:    *singleFile,
-		UseMultithread: useMultithread,
-		Passes:        *passes,
-	}
-}
-
-func getKeyFromUserForEncryption() []byte {
-=======
 		Encrypt:        *encrypt,
 		Decrypt:        *decrypt,
 		Directory:      *directory,
@@ -173,7 +115,6 @@ func getKeyFromUserForEncryption() []byte {
 }
 
 func getKeyForEncryption() ([]byte, []byte, error) {
->>>>>>> 2b4498a (Update random nonce)
 	fmt.Print("Enter encryption key: ")
 	key1, _ := term.ReadPassword(int(os.Stdin.Fd()))
 	fmt.Println()
@@ -182,22 +123,6 @@ func getKeyForEncryption() ([]byte, []byte, error) {
 	key2, _ := term.ReadPassword(int(os.Stdin.Fd()))
 	fmt.Println()
 
-<<<<<<< HEAD
-	if !bytes.Equal(key1, key2) {
-		fmt.Println("Keys do not match. Exiting.")
-		os.Exit(1)
-	}
-
-	// Derive a 32-byte key from the user-supplied key
-	derivedKey := deriveKey(key1)
-
-	defer zeroize(key1)
-	defer zeroize(key2)
-	return derivedKey
-}
-
-func getKeyFromUserForDecryption() []byte {
-=======
 	// Sanitize the passwords
 	key1 = []byte(strings.TrimSpace(string(key1)))
 	key2 = []byte(strings.TrimSpace(string(key2)))
@@ -220,44 +145,20 @@ func getKeyFromUserForDecryption() []byte {
 }
 
 func getKeyForDecryption() ([]byte, error) {
->>>>>>> 2b4498a (Update random nonce)
 	fmt.Print("Enter decryption key: ")
 	key, _ := term.ReadPassword(int(os.Stdin.Fd()))
 	fmt.Println()
 
-<<<<<<< HEAD
-	derivedKey := deriveKey(key)
-
-	defer zeroize(key)
-	return derivedKey
-}
-
-func deriveKey(inputKey []byte) []byte {
-	// Argon2 Settings
-	salt := []byte("random_salt")
-=======
 	key = []byte(strings.TrimSpace(string(key)))
 
 	return key, nil
 }
 
 func deriveKey(inputKey, salt []byte) []byte {
->>>>>>> 2b4498a (Update random nonce)
 	iterations := uint32(16)
 	memory := uint32(64 * 1024)
 	parallelism := uint8(4)
 
-<<<<<<< HEAD
-	key := argon2.Key(inputKey, salt, iterations, memory, parallelism, 32)
-	return key
-}
-
-func processSingleFile(filePath string, key []byte, encrypt, decrypt bool, passes int) error {
-	if encrypt {
-		return encryptFile(filePath, key, passes)
-	} else if decrypt {
-		return decryptFile(filePath, key, passes)
-=======
 	return argon2.Key(inputKey, salt, iterations, memory, parallelism, 32)
 }
 
@@ -266,16 +167,10 @@ func processSingleFile(filePath string, key, salt []byte, encrypt, decrypt bool,
 		return encryptFileGCM(filePath, key, salt, passes)
 	} else if decrypt {
 		return decryptFileGCM(filePath, key, passes, cat)
->>>>>>> 2b4498a (Update random nonce)
 	}
 	return errors.New("invalid operation: must specify -e or -d")
 }
 
-<<<<<<< HEAD
-func processDirectory(directory string, key []byte, encrypt, decrypt, useMultithread bool, threads int, passes int) {
-	var wg sync.WaitGroup
-	fileChan := make(chan string, threads)
-=======
 func encryptFileGCM(filePath string, key, salt []byte, passes int) error {
 	if strings.HasSuffix(filePath, ".cryptsec") {
 		log.Printf("Ignoring already encrypted file: %s\n", filePath)
@@ -462,7 +357,6 @@ func processDirectory(directory string, key, salt []byte, encrypt, decrypt, useM
 	var wg sync.WaitGroup
 	fileChan := make(chan string, threads)
 	errChan := make(chan error, threads)
->>>>>>> 2b4498a (Update random nonce)
 
 	fileCount := 0
 	err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
@@ -476,18 +370,10 @@ func processDirectory(directory string, key, salt []byte, encrypt, decrypt, useM
 	})
 
 	if err != nil {
-<<<<<<< HEAD
-		fmt.Printf("Error walking directory: %v\n", err)
-		return
-	}
-
-	// Limit the number of threads to the number of files if necessary
-=======
 		log.Printf("Error walking directory: %v\n", err)
 		return
 	}
 
->>>>>>> 2b4498a (Update random nonce)
 	if threads > fileCount {
 		threads = fileCount
 	}
@@ -496,20 +382,6 @@ func processDirectory(directory string, key, salt []byte, encrypt, decrypt, useM
 		for i := 0; i < threads; i++ {
 			wg.Add(1)
 			go func() {
-<<<<<<< HEAD
-				for file := range fileChan {
-					if encrypt {
-						if err := encryptFile(file, key, passes); err != nil {
-							fmt.Printf("Error encrypting file %s: %v\n", file, err)
-						}
-					} else if decrypt {
-						if err := decryptFile(file, key, passes); err != nil {
-							fmt.Printf("Error decrypting file %s: %v\n", file, err)
-						}
-					}
-				}
-				wg.Done()
-=======
 				defer wg.Done()
 				for file := range fileChan {
 					if encrypt {
@@ -522,31 +394,10 @@ func processDirectory(directory string, key, salt []byte, encrypt, decrypt, useM
 						}
 					}
 				}
->>>>>>> 2b4498a (Update random nonce)
 			}()
 		}
 	}
 
-<<<<<<< HEAD
-	err = filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() {
-			fileChan <- path
-		}
-		return nil
-	})
-
-	if err != nil {
-		fmt.Printf("Error walking directory: %v\n", err)
-	}
-
-	// Close the channel and wait for threads to complete
-	if useMultithread {
-		close(fileChan)
-		wg.Wait()
-=======
 	go func() {
 		err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -572,7 +423,6 @@ func processDirectory(directory string, key, salt []byte, encrypt, decrypt, useM
 
 	for err := range errChan {
 		log.Println(err)
->>>>>>> 2b4498a (Update random nonce)
 	}
 }
 
@@ -583,29 +433,17 @@ func overwriteAndRemove(filePath string, passes int) error {
 
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
-<<<<<<< HEAD
-		return fmt.Errorf("failed to stat file: %w", err)
-=======
 		return fmt.Errorf("failed to get file info: %w", err)
->>>>>>> 2b4498a (Update random nonce)
 	}
 
 	size := fileInfo.Size()
 	file, err := os.OpenFile(filePath, os.O_WRONLY, 0644)
 	if err != nil {
-<<<<<<< HEAD
-		return fmt.Errorf("failed to open file for overwriting: %w", err)
-	}
-	defer file.Close()
-
-	buffer := make([]byte, 4096)
-=======
 		return fmt.Errorf("failed to open file for overwrite: %w", err)
 	}
 	defer file.Close()
 
 	buffer := make([]byte, 128*1024)
->>>>>>> 2b4498a (Update random nonce)
 	for p := 0; p < passes; p++ {
 		var fillByte byte
 		if p%3 == 0 {
@@ -634,135 +472,6 @@ func overwriteAndRemove(filePath string, passes int) error {
 	return os.Remove(filePath)
 }
 
-<<<<<<< HEAD
-
-func encryptFile(filePath string, key []byte, passes int) error {
-	if strings.HasSuffix(filePath, ".cryptsec") {
-		fmt.Printf("Skipping already encrypted file: %s\n", filePath)
-		return nil
-	}
-
-	inputFile, err := os.Open(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to open file for encryption: %w", err)
-	}
-	defer inputFile.Close()
-
-	outputPath := filePath + ".cryptsec"
-	outputFile, err := os.Create(outputPath)
-	if err != nil {
-		return fmt.Errorf("failed to create encrypted file: %w", err)
-	}
-	defer outputFile.Close()
-
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return fmt.Errorf("failed to create AES cipher: %w", err)
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return fmt.Errorf("failed to create GCM cipher: %w", err)
-	}
-
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return fmt.Errorf("failed to generate nonce: %w", err)
-	}
-
-	if _, err := outputFile.Write(nonce); err != nil {
-		return fmt.Errorf("failed to write nonce: %w", err)
-	}
-
-	buffer := make([]byte, 4096)
-	for {
-		n, err := inputFile.Read(buffer)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return fmt.Errorf("failed to read file: %w", err)
-		}
-
-		ciphertext := gcm.Seal(nil, nonce, buffer[:n], nil)
-		if _, err := outputFile.Write(ciphertext); err != nil {
-			return fmt.Errorf("failed to write encrypted data: %w", err)
-		}
-	}
-
-	inputFile.Close()
-	return overwriteAndRemove(filePath, passes)
-}
-
-func decryptFile(filePath string, key []byte, passes int) error {
-	if !strings.HasSuffix(filePath, ".cryptsec") {
-		return fmt.Errorf("file %s is not encrypted", filePath)
-	}
-
-	inputFile, err := os.Open(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to open encrypted file: %w", err)
-	}
-	defer inputFile.Close()
-
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return fmt.Errorf("failed to create AES cipher: %w", err)
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return fmt.Errorf("failed to create GCM cipher: %w", err)
-	}
-
-	nonceSize := gcm.NonceSize()
-	nonce := make([]byte, nonceSize)
-
-	if _, err := io.ReadFull(inputFile, nonce); err != nil {
-		return fmt.Errorf("failed to read nonce: %w", err)
-	}
-
-	outputPath := strings.TrimSuffix(filePath, ".cryptsec")
-	outputFile, err := os.Create(outputPath)
-	if err != nil {
-		return fmt.Errorf("failed to create decrypted file: %w", err)
-	}
-	defer outputFile.Close()
-
-	buffer := make([]byte, 4096+gcm.Overhead())
-	for {
-		n, err := inputFile.Read(buffer)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return fmt.Errorf("failed to read encrypted data: %w", err)
-		}
-
-		plaintext, err := gcm.Open(nil, nonce, buffer[:n], nil)
-		if err != nil {
-			return fmt.Errorf("failed to decrypt data: %w", err)
-		}
-
-		if _, err := outputFile.Write(plaintext); err != nil {
-			return fmt.Errorf("failed to write decrypted data: %w", err)
-		}
-	}
-
-	inputFile.Close()
-	if err := os.Remove(filePath); err != nil {
-		return fmt.Errorf("failed to remove encrypted file: %w", err)
-	}
-
-	return nil
-}
-
-func zeroize(data []byte) {
-	for i := range data {
-		data[i] = 0
-	}
-}
-=======
 func zeroize(data []byte) error {
 	if data == nil {
 		return fmt.Errorf("data cannot be nil")
@@ -776,4 +485,3 @@ func zeroize(data []byte) error {
 	}
 	return nil
 }
->>>>>>> 2b4498a (Update random nonce)
