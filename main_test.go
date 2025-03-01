@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	encryptionKey = []byte("testkey1234567890") /
+	encryptionKey = []byte("testkey1234567890")
 	salt          = make([]byte, 16)
 )
 
