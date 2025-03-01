@@ -8,7 +8,11 @@ if [ $? -ne 0 ]; then
 fi
 
 # Compiling the binary
+<<<<<<< HEAD
 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o lockit main.go
+=======
+CGO_ENABLED=0 ; go build -trimpath -ldflags '-s -w -extldflags "-static"' -o lockit main.go
+>>>>>>> 2b4498a (Update random nonce)
 
 if [ $? -ne 0 ]; then
     echo "Build failed. Please check your code."
@@ -25,5 +29,8 @@ else
     echo "Build failed. Binary not found."
     exit 1
 fi
+<<<<<<< HEAD
 rm test_invalid_key.txt
 
+=======
+>>>>>>> 2b4498a (Update random nonce)
