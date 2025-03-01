@@ -39,10 +39,12 @@ if %errorlevel% neq 0 (
 )
 echo Tests executed successfully.
 
-REM Disable CGO and build the project
+REM Check the current directory before building
+echo Current directory: %cd%
+
+REM Compile the project and capture the output
 echo Compiling LockIt...
-set CGO_ENABLED=0
-set CGO_ENABLED=0 ; go build -trimpath -ldflags '-s -w -extldflags "-static"' -o lockit.exe main.go > build.log 2>&1
+go build -trimpath -ldflags "-s -w -extldflags \"-static\"" -o lockit.exe main.go > build.log 2>&1
 if %errorlevel% neq 0 (
     echo.
     echo [91mError: Compilation failed. Check the build.log for details.[0m
@@ -52,10 +54,13 @@ if %errorlevel% neq 0 (
 echo LockIt compiled successfully.
 
 REM Check if lockit.exe exists after compilation
+echo Checking if lockit.exe exists...
 if not exist "lockit.exe" (
     echo Error: lockit.exe not found after compilation.
+    echo Please check the build.log file for details.
     exit /b 1
 )
+echo lockit.exe found.
 
 REM Create the C:\LockIt directory if it doesn't exist
 echo Creating C:\LockIt directory...
