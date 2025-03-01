@@ -46,12 +46,15 @@ You can run the program with the following command-line options:
 
 ### Flags
 
+### Flags
+
 - `-e`: Enable file encryption.
 - `-d`: Enable file decryption.
 - `-r <directory>`: Process all files in the specified directory.
 - `-f <file>`: Process a single file.
 - `-t <number of threads>`: Set the number of threads for parallel processing (only for directory processing).
 - `-p <number of passes>`: Define the number of overwrite passes for secure file deletion (0 for normal deletion).
+- `-c`: Display decrypted content in the terminal without modifying the original file (for decryption).
   
 
 ### Example Commands
@@ -75,6 +78,10 @@ lockit -d -r "/path/to/directory"
 **Encrypt files with multiple threads**:
 ```
 lockit -t 8 -e -r "/path/to/directory"
+```
+**Display decrypted content of a file in the terminal**:
+```
+lockit -d -c -f "file.txt.cryptsec"
 ```
 
 ### Key Features
