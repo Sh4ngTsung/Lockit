@@ -42,13 +42,20 @@ echo Tests executed successfully.
 REM Disable CGO and build the project
 echo Compiling LockIt...
 set CGO_ENABLED=0
-set CGO_ENABLED=0 ; go build -trimpath -ldflags '-s -w -extldflags "-static"' -o lockit.exe main.go
+set CGO_ENABLED=0 ; go build -trimpath -ldflags '-s -w -extldflags "-static"' -o lockit.exe main.go > build.log 2>&1
 if %errorlevel% neq 0 (
     echo.
-    echo [91mError: Compilation failed. Check your code.[0m
+    echo [91mError: Compilation failed. Check the build.log for details.[0m
+    type build.log
     exit /b 1
 )
 echo LockIt compiled successfully.
+
+REM Check if lockit.exe exists after compilation
+if not exist "lockit.exe" (
+    echo Error: lockit.exe not found after compilation.
+    exit /b 1
+)
 
 REM Create the C:\LockIt directory if it doesn't exist
 echo Creating C:\LockIt directory...
