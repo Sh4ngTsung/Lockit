@@ -155,7 +155,7 @@ func getKeyForDecryption() ([]byte, error) {
 }
 
 func deriveKey(inputKey, salt []byte) []byte {
-	iterations := uint32(16)
+	iterations := uint32(32)
 	memory := uint32(64 * 1024)
 	parallelism := uint8(4)
 
