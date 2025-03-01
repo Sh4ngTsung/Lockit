@@ -15,8 +15,15 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Remove debug symbols (optional, but recommended)
-strip -s lockit
+# Check if strip is installed
+if command -v strip > /dev/null 2>&1; then
+    # Strip debug symbols from the binary
+    strip -s lockit
+    echo "Binary stripped successfully."
+else
+    # Inform the user that strip is not installed
+    echo "Warning: 'strip' is not installed on this system. Binary was not stripped."
+fi
 
 # Verify that the binary file was created correctly
 if [ -f "./lockit" ]; then
