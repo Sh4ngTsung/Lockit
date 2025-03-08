@@ -347,19 +347,14 @@ func processDirectory(files []string, key, salt []byte, config Config, printTime
 	errChan := make(chan error, config.Threads)
 	var wg sync.WaitGroup
 
-	// Inicia workers
 	startWorkers(fileChan, errChan, &wg, key, salt, config, startTime)
 
-	// Envia arquivos para processamento
 	sendFilesToWorkers(files, fileChan)
 
-	// Aguarda workers terminarem e fecha canal de erros
 	waitForWorkersAndCloseErrorChan(&wg, errChan)
 
-	// Processa erros
 	processErrors(errChan)
 
-	// Imprime tempo de execução
 	printExecutionTime(startTime, config.Encrypt, printTime)
 }
 
