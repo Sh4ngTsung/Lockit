@@ -25,7 +25,7 @@ This notice aims to ensure you have a smooth and secure experience when using Lo
 
 ## Linux Installation
 ```
-git clone https://github.com/Sh4ngTsung/lockit.git
+git clone https://github.com/Sh4ngTsung/Lockit.git
 cd Lockit
 go mod tidy
 ./build.sh
