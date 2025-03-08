@@ -83,6 +83,14 @@ lockit -t 8 -e -r "/path/to/directory"
 ```
 lockit -d -c -f "file.txt.cryptsec"
 ```
+**Encrypt files using a specified extension pattern**
+```
+lockit -e -t 6 -p 3 "/path/to/directory/*.pdf"
+```
+**Decrypt files matching the encrypted extension pattern**
+```
+lockit -d -t 6 -p 3 "/path/to/directory/*.pdf.cryptsec"
+```
 
 ### Key Features
 
