@@ -68,51 +68,60 @@ func zeroize(data []byte) error {
 	if data == nil {
 		return fmt.Errorf("data cannot be nil")
 	}
-
-	for i := 0; i < 38; i++ {
-		_, err := rand.Read(data)
-		if err != nil {
-			return fmt.Errorf("error generating random values: %w", err)
-		}
+	for i := range data {
+		data[i] = 0
 	}
 	return nil
 }
 
+func incrementNonce(nonce []byte) {
+	for i := len(nonce) - 1; i >= 0; i-- {
+		nonce[i]++
+		if nonce[i] != 0 {
+			break
+		}
+	}
+}
+
 func getKeyForEncryption() ([]byte, []byte, error) {
 	fmt.Print("Enter encryption key: ")
-	key1, _ := term.ReadPassword(int(os.Stdin.Fd()))
+	key1Raw, _ := term.ReadPassword(int(os.Stdin.Fd()))
 	fmt.Println()
 
 	fmt.Print("Confirm encryption key: ")
-	key2, _ := term.ReadPassword(int(os.Stdin.Fd()))
+	key2Raw, _ := term.ReadPassword(int(os.Stdin.Fd()))
 	fmt.Println()
 
-	key1 = []byte(strings.TrimSpace(string(key1)))
-	key2 = []byte(strings.TrimSpace(string(key2)))
+	key1 := bytes.TrimSpace(key1Raw)
+	key2 := bytes.TrimSpace(key2Raw)
 
 	if !bytes.Equal(key1, key2) {
+		zeroize(key1Raw)
+		zeroize(key2Raw)
 		return nil, nil, fmt.Errorf("keys do not match")
 	}
 
 	salt := make([]byte, 16)
 	if _, err := rand.Read(salt); err != nil {
+		zeroize(key1Raw)
+		zeroize(key2Raw)
 		return nil, nil, fmt.Errorf("failed to generate salt: %w", err)
 	}
 
 	derivedKey := deriveKey(key1, salt)
 
-	defer zeroize(key1)
-	defer zeroize(key2)
+	zeroize(key1Raw)
+	zeroize(key2Raw)
 
 	return derivedKey, salt, nil
 }
 
 func getKeyForDecryption() ([]byte, error) {
 	fmt.Print("Enter decryption key: ")
-	key, _ := term.ReadPassword(int(os.Stdin.Fd()))
+	keyRaw, _ := term.ReadPassword(int(os.Stdin.Fd()))
 	fmt.Println()
 
-	key = []byte(strings.TrimSpace(string(key)))
+	key := bytes.TrimSpace(keyRaw)
 
 	return key, nil
 }
@@ -194,16 +203,18 @@ func encryptFileGCM(filePath string, key, salt []byte, passes int) error {
 
 	for {
 		n, err := inputFile.Read(buffer)
-		if err != nil && err != io.EOF {
-			return fmt.Errorf("failed to read plaintext: %w", err)
+		if n > 0 {
+			ciphertext := gcm.Seal(nil, nonce, buffer[:n], nil)
+			if _, err := outputFile.Write(ciphertext); err != nil {
+				return fmt.Errorf("failed to write ciphertext: %w", err)
+			}
+			incrementNonce(nonce)
 		}
-		if n == 0 {
+		if err == io.EOF {
 			break
 		}
-
-		ciphertext := gcm.Seal(nil, nonce, buffer[:n], nil)
-		if _, err := outputFile.Write(ciphertext); err != nil {
-			return fmt.Errorf("failed to write ciphertext: %w", err)
+		if err != nil {
+			return fmt.Errorf("failed to read plaintext: %w", err)
 		}
 	}
 
@@ -256,55 +267,48 @@ func decryptFileGCM(filePath string, key []byte, passes int, cat bool) error {
 	bufferSize := baseBufferSize + gcm.Overhead()
 	buffer := make([]byte, bufferSize)
 
-	if cat {
-		for {
-			n, err := inputFile.Read(buffer)
-			if err != nil && err != io.EOF {
-				return fmt.Errorf("failed to read ciphertext: %w", err)
-			}
-			if n == 0 {
-				break
-			}
-
-			plaintext, err := gcm.Open(nil, nonce, buffer[:n], nil)
-			if err != nil {
-				return fmt.Errorf("failed to decrypt ciphertext: %w", err)
-			}
-
-			if _, err := os.Stdout.Write(plaintext); err != nil {
-				return fmt.Errorf("failed to write to terminal: %w", err)
-			}
-		}
-		fmt.Println()
-	} else {
+	var outputFile *os.File
+	if !cat {
 		outputFilePath := strings.TrimSuffix(filePath, ".cryptsec")
-		outputFile, err := os.Create(outputFilePath)
+		outputFile, err = os.Create(outputFilePath)
 		if err != nil {
 			return fmt.Errorf("failed to create decrypted file: %w", err)
 		}
 		defer outputFile.Close()
+	}
 
-		for {
-			n, err := inputFile.Read(buffer)
-			if err != nil && err != io.EOF {
-				return fmt.Errorf("failed to read ciphertext: %w", err)
-			}
-			if n == 0 {
-				break
-			}
-
+	for {
+		n, err := io.ReadFull(inputFile, buffer)
+		if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+			return fmt.Errorf("failed to read ciphertext: %w", err)
+		}
+		if n > 0 {
 			plaintext, err := gcm.Open(nil, nonce, buffer[:n], nil)
 			if err != nil {
-				return fmt.Errorf("failed to decrypt ciphertext: %w", err)
+				return fmt.Errorf("failed to decrypt ciphertext (wrong key/corrupted): %w", err)
 			}
 
-			if _, err := outputFile.Write(plaintext); err != nil {
-				return fmt.Errorf("failed to write decrypted data: %w", err)
+			if cat {
+				if _, err := os.Stdout.Write(plaintext); err != nil {
+					return fmt.Errorf("failed to write to terminal: %w", err)
+				}
+			} else {
+				if _, err := outputFile.Write(plaintext); err != nil {
+					return fmt.Errorf("failed to write decrypted data: %w", err)
+				}
 			}
+			incrementNonce(nonce)
 		}
 
-		inputFile.Close()
+		if err == io.EOF || err == io.ErrUnexpectedEOF {
+			break
+		}
+	}
 
+	if cat {
+		fmt.Println()
+	} else {
+		inputFile.Close()
 		if passes >= 0 {
 			if err := overwriteAndRemove(filePath, passes); err != nil {
 				return fmt.Errorf("failed to remove encrypted file: %w", err)
@@ -349,9 +353,11 @@ func processDirectory(files []string, key, salt []byte, config Config, printTime
 
 	startWorkers(fileChan, errChan, &wg, key, salt, config, startTime)
 
-	sendFilesToWorkers(files, fileChan)
-
-	waitForWorkersAndCloseErrorChan(&wg, errChan)
+	go func() {
+		sendFilesToWorkers(files, fileChan)
+		wg.Wait()
+		close(errChan)
+	}()
 
 	processErrors(errChan)
 
@@ -490,21 +496,28 @@ func overwriteAndRemove(filePath string, passes int) error {
 			fillByte = 0x00
 		} else if p%3 == 1 {
 			fillByte = 0xFF
-		} else {
-			if _, err := rand.Read(buffer); err != nil {
-				return fmt.Errorf("failed to generate random data: %w", err)
-			}
 		}
 
-		for written := int64(0); written < size; written += int64(len(buffer)) {
+		for written := int64(0); written < size; {
+			chunkSize := int64(len(buffer))
+			if size-written < chunkSize {
+				chunkSize = size - written
+			}
+
 			if p%3 != 2 {
-				for i := range buffer {
+				for i := int64(0); i < chunkSize; i++ {
 					buffer[i] = fillByte
 				}
+			} else {
+				if _, err := rand.Read(buffer[:chunkSize]); err != nil {
+					return fmt.Errorf("failed to generate random data: %w", err)
+				}
 			}
-			if _, err := file.WriteAt(buffer, written); err != nil {
+
+			if _, err := file.WriteAt(buffer[:chunkSize], written); err != nil {
 				return fmt.Errorf("failed to overwrite file: %w", err)
 			}
+			written += chunkSize
 		}
 	}
 
@@ -543,6 +556,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Error getting encryption key: %v\n", err)
 		}
+
 		defer zeroize(key)
 		defer zeroize(salt)
 	} else if config.Decrypt {
@@ -550,7 +564,9 @@ func main() {
 		if err != nil {
 			log.Fatalf("Error getting decryption key: %v\n", err)
 		}
-		defer zeroize(key)
+		defer func() {
+			zeroize(key[:cap(key)])
+		}()
 	} else {
 		log.Println("No valid operation specified. Use -h for help.")
 		os.Exit(1)

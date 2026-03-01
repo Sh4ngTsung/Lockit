@@ -28,6 +28,7 @@ func createTempFileWithData(data []byte) (string, error) {
 
 	_, err = tmpFile.Write(data)
 	if err != nil {
+		tmpFile.Close()
 		return "", err
 	}
 
@@ -53,6 +54,7 @@ func TestEncryptionDecryptionSingleFile(t *testing.T) {
 	if err := encryptFileGCM(tmpFilePath, derivedKey, salt, 0); err != nil {
 		t.Fatalf("Encryption failed: %v", err)
 	}
+	defer os.Remove(encryptedFilePath)
 
 	if _, err := os.Stat(encryptedFilePath); os.IsNotExist(err) {
 		t.Fatalf("Encrypted file does not exist: %v", err)
@@ -70,8 +72,6 @@ func TestEncryptionDecryptionSingleFile(t *testing.T) {
 	if !bytes.Equal(originalData, decryptedData) {
 		t.Fatalf("Decrypted data does not match original data.")
 	}
-
-	os.Remove(encryptedFilePath)
 }
 
 func TestEncryptionDecryptionDirectory(t *testing.T) {
@@ -114,7 +114,7 @@ func TestEncryptionDecryptionDirectory(t *testing.T) {
 		t.Fatalf("Error walking directory: %v", err)
 	}
 
-	config := Config{Encrypt: true, Decrypt: false, Threads: 2}
+	config := Config{Encrypt: true, Decrypt: false, Threads: 2, Passes: 0}
 	processDirectory(files, derivedKey, salt, config, false)
 
 	if _, err := os.Stat(filepath.Join(tmpDir, "file1.txt.cryptsec")); os.IsNotExist(err) {
@@ -149,7 +149,7 @@ func TestEncryptionDecryptionDirectory(t *testing.T) {
 		t.Fatalf("Error walking decrypt directory: %v", err)
 	}
 
-	config = Config{Encrypt: false, Decrypt: true, Threads: 2}
+	config = Config{Encrypt: false, Decrypt: true, Threads: 2, Passes: 0}
 	processDirectory(decryptFiles, encryptionKey, salt, config, false)
 
 	decryptedData1, err := os.ReadFile(filepath.Join(decryptDir, "file1.txt"))
@@ -202,7 +202,7 @@ func TestMultithreading(t *testing.T) {
 		t.Fatalf("Error walking directory: %v", err)
 	}
 
-	config := Config{Encrypt: true, Decrypt: false, Threads: 2}
+	config := Config{Encrypt: true, Decrypt: false, Threads: 2, Passes: 0}
 	processDirectory(files, derivedKey, salt, config, false)
 
 	for i := 0; i < numFiles; i++ {
@@ -234,7 +234,7 @@ func TestMultithreading(t *testing.T) {
 		t.Fatalf("Error walking decrypt directory: %v", err)
 	}
 
-	config = Config{Encrypt: false, Decrypt: true, Threads: 2}
+	config = Config{Encrypt: false, Decrypt: true, Threads: 2, Passes: 0}
 	processDirectory(decryptFiles, encryptionKey, salt, config, false)
 
 	for i := 0; i < numFiles; i++ {
@@ -261,14 +261,11 @@ func BenchmarkEncryption(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err = encryptFileGCM(tmpFilePath, derivedKey, salt, 0)
+		err = encryptFileGCM(tmpFilePath, derivedKey, salt, -1)
 		if err != nil {
 			b.Fatalf("Encryption failed: %v", err)
 		}
 		os.Remove(tmpFilePath + ".cryptsec")
-		os.Rename(tmpFilePath, tmpFilePath+".temp")
-		os.Rename(tmpFilePath+".temp", tmpFilePath)
-
 	}
 	b.StopTimer()
 }
@@ -282,20 +279,19 @@ func BenchmarkDecryption(b *testing.B) {
 	defer os.Remove(tmpFilePath)
 
 	derivedKey := deriveKey(encryptionKey, salt)
-	err = encryptFileGCM(tmpFilePath, derivedKey, salt, 0)
+	err = encryptFileGCM(tmpFilePath, derivedKey, salt, -1)
 	if err != nil {
 		b.Fatalf("Encryption failed: %v", err)
 	}
+	defer os.Remove(tmpFilePath + ".cryptsec")
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err = decryptFileGCM(tmpFilePath+".cryptsec", encryptionKey, 0, false)
+		err = decryptFileGCM(tmpFilePath+".cryptsec", encryptionKey, -1, false)
 		if err != nil {
 			b.Fatalf("Decryption failed: %v", err)
 		}
 		os.Remove(tmpFilePath)
-		os.Rename(tmpFilePath+".cryptsec", tmpFilePath)
-
 	}
 	b.StopTimer()
 }
